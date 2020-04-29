@@ -36,6 +36,7 @@ WPARAM loop() {
 }
 
 void init_d3d(HWND hwnd) {
+
 	g_d3 = Direct3DCreate9(D3D_SDK_VERSION);
 
 	D3DPRESENT_PARAMETERS direct3DPresetParams;
@@ -50,9 +51,6 @@ void init_d3d(HWND hwnd) {
 	direct3DPresetParams.EnableAutoDepthStencil = TRUE;
 	direct3DPresetParams.AutoDepthStencilFormat = D3DFMT_D16;
 
-	g_d3->CreateDevice(D3DADAPTER_DEFAULT, D3DDEVTYPE_HAL, hwnd, D3DCREATE_SOFTWARE_VERTEXPROCESSING, &direct3DPresetParams, &g_d3dev);
-	D3DXCreateFontA(g_d3dev, 12, NULL, FW_BOLD, 1, FALSE, DEFAULT_CHARSET, OUT_DEFAULT_PRECIS, ANTIALIASED_QUALITY, DEFAULT_PITCH | FF_DONTCARE, "Tahoma", &g_d3Font);
-	D3DXCreateLine(g_d3dev, &g_d3Line);
 }
 
 LRESULT CALLBACK WindowProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam) {
@@ -96,8 +94,10 @@ void setup_window() {
 
 //drawing functions
 constexpr double M_PI = 3.141592653589793116;
-constexpr D3DCOLOR epic_blue = D3DCOLOR_RGBA(0x41, 0x87, 0xF5, 0xFF);
+constexpr double RAD_TO_DEG = 180.f / M_PI;
+constexpr double DEG_TO_RAD = M_PI / 180.f;
 
+constexpr D3DCOLOR epic_blue = D3DCOLOR_RGBA(0x41, 0x87, 0xF5, 0xFF);
 constexpr D3DCOLOR red       = D3DCOLOR_RGBA(0xFF, 0x00, 0x00, 0xFF);
 constexpr D3DCOLOR green     = D3DCOLOR_RGBA(0x00, 0xFF, 0x00, 0xFF);
 constexpr D3DCOLOR blue      = D3DCOLOR_RGBA(0x00, 0x00, 0xFF, 0xFF);

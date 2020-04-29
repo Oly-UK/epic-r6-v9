@@ -16,13 +16,37 @@ MODULEENTRY32 g_module;
 uintptr_t g_game_man_offset, g_prof_man_offset;
 uintptr_t g_game_manager, g_entity_list, g_camera;
 view_matrix_t g_vm;
-
-IDirect3D9* g_d3;
-IDirect3DDevice9* g_d3dev;
-ID3DXFont* g_d3Font;
-ID3DXLine* g_d3Line;
-
 std::vector<entity_t> ents;
+
+D3DXVECTOR4 ypr_to_quat(float yaw, float pitch, float roll) {
+	float cy = cos(yaw * 0.5);
+	float sy = sin(yaw * 0.5);
+	float cr = cos(roll * 0.5);
+	float sr = sin(roll * 0.5);
+	float cp = cos(pitch * 0.5);
+	float sp = sin(pitch * 0.5);
+	return D3DXVECTOR4(cy * sr * cp - sy * cr * sp, cy * cr * sp + sy * sr * cp, sy * cr * cp - cy * sr * sp, cy * cr * cp + sy * sr * sp);
+}
+
+D3DXVECTOR3 calc_angle(D3DXVECTOR3 pos) {
+	auto dir = pos - g_vm.ViewTranslation;
+	auto x = asin(dir.z / sqrt(dir.x * dir.x + dir.y * dir.y + dir.z * dir.z)) * RAD_TO_DEG;
+	auto z = atan(dir.y / dir.x) * RAD_TO_DEG;
+
+	if (dir.x >= 0.f) z += 180.f;
+	if (x > 180.0f) x -= 360.f;
+	else if (x < -180.0f) x += 360.f;
+
+	return D3DXVECTOR3(x, 0.f, z + 90.f);
+}
+
+void set_angles(uintptr_t local_player, D3DXVECTOR3 angles) {
+	auto new_angles = ypr_to_quat(angles.z * DEG_TO_RAD, 0.f, angles.x * DEG_TO_RAD);
+
+	auto skeleton = RPM<uintptr_t>(local_player + OFFSET_ENTITY_REF);
+	auto viewAngle2 = RPM<uintptr_t>(skeleton + 0x1200);
+	WPM<D3DXVECTOR4>(viewAngle2 + 0xC0, new_angles);
+}
 
 void populate_entity_vector() {
 	struct entity_list_t { uintptr_t ent_ptrs[31]; } entity_list;
@@ -49,6 +73,9 @@ void render() {
 	g_d3dev->Clear(0, NULL, D3DCLEAR_TARGET, D3DCOLOR_ARGB(0, 0, 0, 0), 1.0f, 0);
 	g_d3dev->BeginScene();
 
+	float max = FLT_MAX;
+	D3DXVECTOR3 closest;
+
 	g_vm.update();
 
 	for (entity_t ent : ents) {
@@ -62,6 +89,23 @@ void render() {
 		draw_outlined_rect(box_top.x - box_width / 2, box_top.y, box_width, box_height, epic_blue);
 		draw_healthbars(box_top.x - box_width / 2 - 6, box_top.y, 2, box_height, ent.m_health, 100, epic_blue);
 		draw_circle(head_position.x, head_position.y, box_height / 12.5f, 60, epic_blue);
+
+		{
+			auto tmp = head_position - D3DXVECTOR3(g_screen_width / 2, g_screen_height / 2, 0);
+			float pythag = sqrt(tmp.x * tmp.x + tmp.y * tmp.y);
+
+			if (pythag < max) {
+				max = pythag;
+				closest = ent.m_headpos;
+			}
+		}
+	}
+
+	auto closest_head = g_vm.world_to_screen(closest);
+	
+	if (closest_head.z > 0.f) {
+		draw_line(g_screen_width / 2, g_screen_height / 2, closest_head.x, closest_head.y, epic_blue);
+		if (GetAsyncKeyState(VK_RBUTTON) & 0x8000) { set_angles(RPM<uintptr_t>(g_entity_list), calc_angle(closest)); }
 	}
 
 	g_d3dev->EndScene();
